@@ -3,4 +3,4 @@
 
 void get_key(int *id, char *key);
 
-#endif
+#endif // UTILS_H
