@@ -1,4 +1,5 @@
 import os, socket
+from Crypto.Util.number import getPrime, long_to_bytes
 
 HOST = '127.0.0.1'
 PORT = 4050
@@ -12,12 +13,24 @@ def loaddb():
     except:
         return []
 
+def RSA():
+    p = getPrime(1024)
+    q = getPrime(1024)
+    n = p*q
+    e = 65537
+    phi = (p-1)*(q-1)
+    d = pow(e, -1, phi)
+    n = long_to_bytes(n).hex()
+    d = long_to_bytes(d).hex()
+    privkey = n + '-' + d
+    return privkey, n
+
 def generate_key():
     database = loaddb()
-    key = os.urandom(32).hex()
+    privkey, pubkey = RSA()
     with open("database.txt", "a") as f:
-        f.write(f"{key}\n")
-    return len(database), key
+        f.write(f"{privkey}\n")
+    return len(database), pubkey
 
 def send_key(conn):
     id, key = generate_key()
