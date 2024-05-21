@@ -1,40 +1,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include "config.h"
 
-void get_key(int *id, char *key) {
-    int sockfd;
-    struct sockaddr_in server_addr;
-    char buffer[256];
 
-    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        perror("Socket creation failed");
+int hex_to_bytes(const char *hex, unsigned char *bytes, int blen) {
+    for (int i = 0; i < blen; i++) {
+        if (sscanf(hex + 2 * i, "%2hhx", &bytes[i]) != 1) {
+            return 0;
+        }
     }
-
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(SERVER_PORT);
-
-    if (inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr) <= 0) {
-        perror("Invalid address/Address not supported");
-    }
-
-    if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-        perror("Connection failed");
-    }
-
-    if (read(sockfd, buffer, sizeof(buffer) - 1) < 0) {
-        perror("Read failed");
-    }
-    buffer[sizeof(buffer) - 1] = '\0';
-    sscanf(buffer, "%*s %d", id);
-
-    if (read(sockfd, buffer, sizeof(buffer) - 1) < 0) {
-        perror("Read failed");
-    }
-    buffer[sizeof(buffer) - 1] = '\0';
-    sscanf(buffer, "%*s %64s", key);
-    close(sockfd);
+    return 1;
 }
+
+unsigned long bytes_to_long(const unsigned char *bytes, int blen) {
+    unsigned long value = 0;
+    for (int i = 0; i < blen; i++) {
+        value = (value << 8) | bytes[i];
+    }
+    return value;
+}
+
+int long_to_bytes(unsigned long value, unsigned char *bytes, int blen) {
+    for (int i = blen - 1; i >= 0; i--) {
+        bytes[i] = value & 0xff;
+        value >>= 8;
+    }
+    return 1;
+}
+

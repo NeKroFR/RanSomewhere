@@ -5,6 +5,5 @@
 
 void self_delete(const char *filename) {
     unlink(filename);
-    // TODO: delete from memory
     exit(EXIT_FAILURE);
 }
