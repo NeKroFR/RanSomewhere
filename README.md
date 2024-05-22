@@ -1,5 +1,14 @@
 # RanSomewhere
 
-POC ransomware created for educational purposes.
-This is a simple ranswomware without anti reverse engineering techniques.
-After this project, I will create a second version with anti reverse engineering techniques.
+Proof of Concept ransomware developed for educational purposes.
+
+This ransomware encrypts all files in `C:\Users\` using RSA and AES-256 encryption.
+
+This initial version is straightforward and does not include any anti-reverse engineering techniques. A subsequent version will be developed with advanced anti-reverse engineering features.
+
+
+
+
+
+
+
