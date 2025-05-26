@@ -69,7 +69,7 @@
             if (response.ok) {
                 resultDiv.innerHTML = `<p class="success">Decryption Key: <code>${result.key}</code></p>`;
             } else {
-                resultDiv.innerHTML = `<p class="error">Error: ${result.error}</p>`;
+                resultDiv.innerHTML = `<p class="error">ERROR: ${result.error}</p>`;
             }
             submitBtn.disabled = false;
             submitBtn.textContent = 'Get Decryption Key';
