@@ -8,7 +8,7 @@ def loaddb():
     database = []
     try:
         for line in open("database.txt", "r"):
-                database.append(line.strip())
+            database.append(line.strip())
         return database
     except:
         return []
@@ -47,6 +47,6 @@ def start_server(host, port):
             with conn:
                 print(f"Connected by {addr}")
                 send_key(conn)
-            
+
 if __name__ == "__main__":
     start_server(HOST, PORT)

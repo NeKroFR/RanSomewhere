@@ -1,45 +1,78 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RanSomewhere</title>
+    <title>RanSomewhere - Ransom Payment</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #1a202c; color: #e2e8f0; }
+        .error { color: #f56565; }
+        .success { color: #48bb78; }
+    </style>
 </head>
-<body>
-    <h1>RanSomewhere</h1>
-    <h2>How to pay?</h2>
-    <p>Send 0.1 BTC to the following address: ...</p>
-    <p>Enter you're key id and the transaction hash</p>
-    <p>Press the "Get Key" button</p>
-    <form id="keyForm">
-        <label for="id">Enter ID:</label>
-        <input type="number" id="id" name="id" required><br><br>
-        
-        <label for="transaction">Enter Transaction ID:</label>
-        <input type="text" id="transaction" name="transaction" required><br><br>
-        
-        <button type="submit">Get Key</button>
-    </form>
-    <div id="result"></div>
+<body class="min-h-screen flex items-center justify-center">
+    <div class="max-w-md w-full p-6 bg-gray-800 rounded-lg shadow-lg">
+        <h1 class="text-3xl font-bold text-center mb-4">RanSomewhere</h1>
+        <h2 class="text-xl font-semibold mb-2">Your Files Are Encrypted!</h2>
+        <p class="mb-4">
+            To recover your files, send <strong>0.1 BTC</strong> to the address below and enter your ID and transaction hash.
+        </p>
+        <p class="mb-4 text-sm">
+            Bitcoin Address: <code class="bg-gray-700 p-1 rounded">1EduRansomX1234567890abcdef1234567890</code>
+        </p>
+        <!-- Form for key retrieval -->
+        <form id="keyForm" class="space-y-4">
+            <div>
+                <label for="id" class="block text-sm font-medium">Enter ID:</label>
+                <input type="number" id="id" name="id" required
+                       class="w-full p-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+                <label for="transaction" class="block text-sm font-medium">Enter Transaction ID:</label>
+                <input type="text" id="transaction" name="transaction" required
+                       class="w-full p-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <button type="submit" id="submitBtn"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white p-2 rounded disabled:bg-gray-600">
+                Get Decryption Key
+            </button>
+        </form>
+        <!-- Result display -->
+        <div id="result" class="mt-4"></div>
+                    <strong>DO NOT PAY!</strong> <br>To retrieve the decryption key, just enter your ID and any transaction ID.
+        </p>
+
+    </div>
+
     <script>
-        document.getElementById('keyForm').addEventListener('submit', async function(e) {
+        const form = document.getElementById('keyForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const resultDiv = document.getElementById('result');
+
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Processing...';
+            resultDiv.innerHTML = '';
+
             const id = document.getElementById('id').value;
             const transaction = document.getElementById('transaction').value;
+
             const response = await fetch('/get_key', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({ 'id': id, 'transaction': transaction })
             });
             const result = await response.json();
-            const resultDiv = document.getElementById('result');
+
             if (response.ok) {
-                resultDiv.innerHTML = `<p>Key: ${result.key}</p>`;
+                resultDiv.innerHTML = `<p class="success">Decryption Key: <code>${result.key}</code></p>`;
             } else {
-                resultDiv.innerHTML = `<p>Error: ${result.error}</p>`;
+                resultDiv.innerHTML = `<p class="error">Error: ${result.error}</p>`;
             }
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Get Decryption Key';
         });
     </script>
 </body>
