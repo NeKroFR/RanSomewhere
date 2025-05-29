@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 int hex_to_bytes(const char *hex, unsigned char *bytes, int blen) {
     for (int i = 0; i < blen; i++) {
         if (sscanf(hex + 2 * i, "%2hhx", &bytes[i]) != 1) {
@@ -27,4 +26,3 @@ int long_to_bytes(unsigned long value, unsigned char *bytes, int blen) {
     }
     return 1;
 }
-
