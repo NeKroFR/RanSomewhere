@@ -13,13 +13,17 @@
 #include "decrypt.h"
 
 int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        printf("Usage: %s <RSA private key as n-d in hex>\n", argv[0]);
+    char privkey_hex[4096];
+    printf("Key: ");
+    if (fgets(privkey_hex, sizeof(privkey_hex), stdin) == NULL) {
+        printf("Failed to read input\n");
         return 1;
     }
     
-    char privkey_hex[1024];
-    snprintf(privkey_hex, sizeof(privkey_hex), "%s", argv[1]);  // Expecting "n-d" format directly
+    size_t len = strlen(privkey_hex);
+    if (len > 0 && privkey_hex[len-1] == '\n') {
+        privkey_hex[len-1] = '\0';
+    }
 
     BCRYPT_KEY_HANDLE hKey = import_rsa_private_key(privkey_hex);
     if (!hKey) {
