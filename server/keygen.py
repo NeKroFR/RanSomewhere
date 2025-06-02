@@ -1,8 +1,12 @@
 import os, socket
 from Crypto.Util.number import getPrime, long_to_bytes
+import configparser
 
-HOST = '127.0.0.1'
-PORT = 4050
+config = configparser.ConfigParser()
+config.read('/app/config.ini')
+keygen_port = config.getint('server', 'keygen_port')
+HOST = '0.0.0.0'
+PORT = keygen_port
 
 def loaddb():
     database = []

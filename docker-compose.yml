@@ -6,7 +6,9 @@ services:
     container_name: server_container
     ports:
       - "5000:5000"
+      - "4050:4050"
     volumes:
+      - ./config.ini:/app/config.ini
       - ./server:/app/server
     command: ["sh", "-c", "python3 /app/server/keygen.py & python3 /app/server/server.py"]
     restart: always

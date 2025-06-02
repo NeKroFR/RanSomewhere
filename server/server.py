@@ -1,5 +1,10 @@
 from flask import Flask, request, render_template, jsonify
 import os
+import configparser
+
+config = configparser.ConfigParser()
+config.read('/app/config.ini')
+web_port = config.getint('server', 'web_port')
 
 app = Flask(__name__)
 
@@ -43,4 +48,4 @@ def fetch_key():
         return jsonify({'error': 'Invalid ID'}), 400
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=web_port)

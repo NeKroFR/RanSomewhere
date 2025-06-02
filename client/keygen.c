@@ -5,6 +5,17 @@
 #include "config.h"
 
 int get_key(int *id, char *key) {
+    char* external_ip = get_config_value("external_ip");
+    char* keygen_port_str = get_config_value("keygen_port");
+    if (!external_ip || !keygen_port_str) {
+        printf("Failed to read config\n");
+        if (external_ip) free(external_ip);
+        if (keygen_port_str) free(keygen_port_str);
+        return 0;
+    }
+    int keygen_port = atoi(keygen_port_str);
+    free(keygen_port_str);
+
     WSADATA wsaData;
     SOCKET sockfd;
     struct sockaddr_in server_addr;
@@ -14,6 +25,7 @@ int get_key(int *id, char *key) {
     // Initialize Winsock
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
         printf("Winsock initialization failed\n");
+        free(external_ip);
         return 0;
     }
 
@@ -21,18 +33,18 @@ int get_key(int *id, char *key) {
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
         perror("Socket creation failed");
         WSACleanup();
+        free(external_ip);
         return 0;
     }
 
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(SERVER_PORT);
-
-    // Use inet_addr instead of inet_pton for IP address conversion
-    server_addr.sin_addr.s_addr = inet_addr(SERVER_IP);
+    server_addr.sin_port = htons(keygen_port);
+    server_addr.sin_addr.s_addr = inet_addr(external_ip);
     if (server_addr.sin_addr.s_addr == INADDR_NONE) {
         perror("Invalid address/Address not supported");
         closesocket(sockfd);
         WSACleanup();
+        free(external_ip);
         return 0;
     }
 
@@ -41,6 +53,7 @@ int get_key(int *id, char *key) {
         perror("Connection failed");
         closesocket(sockfd);
         WSACleanup();
+        free(external_ip);
         return 0;
     }
 
@@ -50,6 +63,7 @@ int get_key(int *id, char *key) {
         perror("Read failed");
         closesocket(sockfd);
         WSACleanup();
+        free(external_ip);
         return 0;
     }
 
@@ -70,6 +84,6 @@ int get_key(int *id, char *key) {
     // Clean up
     closesocket(sockfd);
     WSACleanup();
-
+    free(external_ip);
     return 1;
 }

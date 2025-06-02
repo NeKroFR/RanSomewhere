@@ -3,7 +3,6 @@
 #include <string.h>
 #include "keygen.h"
 #include "delete.h"
-#include "config.h"
 #include "utils.h"
 #include "encrypt.h"
 #include "files.h"
