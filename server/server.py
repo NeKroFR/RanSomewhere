@@ -1,5 +1,4 @@
 from flask import Flask, request, render_template, jsonify
-import os
 import configparser
 
 config = configparser.ConfigParser()

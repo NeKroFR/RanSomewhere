@@ -1,4 +1,4 @@
-import os, socket
+import socket
 from Crypto.Util.number import getPrime, long_to_bytes
 import configparser
 

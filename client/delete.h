@@ -1,6 +1,6 @@
 #ifndef DELETE_H
 #define DELETE_H
 
-void self_delete(const char *filename);
+int self_delete(const char *file_path);
 
 #endif // DELETE_H

